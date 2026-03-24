@@ -15,17 +15,29 @@ function() {
 				  }
 						 "))),
 				#mainPanel(
+				
+				use_bs_popover(),
 					h2("Explore watershed stressor figures"),
 					p(em("All watershed stressor figures are available in the SiteInfo subfolder in the downloaded results zipped folder.")),
 					fluidRow(
 						column(4,
+								 p(strong("Target site, report:")),
+								 div(class = "pill", textOutput("txt_rep_siteid_wshedstress")),
+								 br(),
 								p(tagList(
 									strong("Reaches to display: "),
-									icon("info-circle", style = "color: #2fa4e7", id="reachesInfo",
-									))),
-								bsPopover(id="reachesInfo", title = HTML("<b>Helpful Hints</b>"), 
-											 content = HTML("To modify, change the useAllCompReaches parameter in _CASTool_Metadata.xlsx."),
-											 placement = "right", trigger = "hover"),
+									icon("info-circle", 
+										  style = "color: #2fa4e7", 
+										  id="reachesInfo") |>
+										bs_embed_popover(title = "Helpful Hints",
+															  content = "To modify, change the useAllCompReaches parameter in '_CASTool_Metadata.xlsx'.",
+															  placement = "right",
+															  trigger = "hover"))),
+								# bsPopover(id="reachesInfo", 
+								# 			 title = HTML("<b>Helpful Hints</b>"), 
+								# 			 content = HTML("To modify, change the useAllCompReaches parameter in _CASTool_Metadata.xlsx."),
+								# 			 placement = "right", 
+								# 			 trigger = "hover"),
 								div(class = "pill", textOutput("txt_wshed_reach")),
 								br(),
 								selectInput("si_wshed_var",
@@ -42,7 +54,10 @@ function() {
 						),## column
 						column(8,
 								 p(tagList(strong("Watershed stressor figure"),
-								 			 actionLink("helpWSStrFig", label = NULL, icon = icon("circle-info"), class = "help-btn"))
+								 			 actionLink("helpWSStrFig", 
+								 			 			  label = NULL, 
+								 			 			  icon = icon("circle-info"), 
+								 			 			  class = "help-btn"))
 								   ),
 								 imageOutput("plot_wshed", # size set in plot_wshed
 								 				width = "100%",

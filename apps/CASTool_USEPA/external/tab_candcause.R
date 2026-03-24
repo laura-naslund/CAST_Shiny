@@ -4,7 +4,12 @@ function() {
 	tabPanel("Candidate Causes",
 				value = "tab_candcause",
 				mainPanel(
+					use_bs_popover(),
 					h2("Candidate Causes"),
+					
+					p(strong("Target site, report:")),
+					div(class = "pill", textOutput("txt_rep_siteid_candcause")),
+					br(),
 					
 					h4(tagList("User-specified thresholds for evaluating specific candidate causes",
 								 actionLink("helpCandCause", label = NULL, icon = icon("circle-info"), class = "help-btn"))
@@ -17,11 +22,19 @@ function() {
 					
 					h4(tagList(
 						"Stressor(s) initially evaluated",
-						icon("info-circle", style = "color: #2fa4e7", id="stressorInitInfo",
-						))),
-					bsPopover(id="stressorInitInfo", title = HTML("<b>Helpful Hints</b>"), 
-								 content = HTML("Stressors included in the measured and/or modeled stressor metadata, sampled at the target site, and marked for inclusion by the user (UseInStressorID = 1 in the stressor metadata)"),
-								 placement = "right", trigger = "hover"),
+						icon("info-circle", 
+							  style = "color: #2fa4e7", 
+							  id="stressorInitInfo") |>
+							bs_embed_popover(title = "Helpful Hints",
+												  content = "Stressors included in the measured and/or modeled stressor metadata, sampled at the target site, and marked for inclusion by the user (UseInStressorID = 1 in the stressor metadata)",
+												  placement = "right",
+												  trigger = "hover")
+						)),
+					# bsPopover(id="stressorInitInfo", 
+					# 			 title = HTML("<b>Helpful Hints</b>"), 
+					# 			 content = HTML("Stressors included in the measured and/or modeled stressor metadata, sampled at the target site, and marked for inclusion by the user (UseInStressorID = 1 in the stressor metadata)"),
+					# 			 placement = "right", 
+					# 			 trigger = "hover"),
 					
 					#DT::dataTableOutput("df_candcause_all_DT"),
 					pre(textOutput("df_candcause_all_DT")),

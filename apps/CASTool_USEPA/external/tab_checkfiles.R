@@ -13,6 +13,7 @@ function() {
 				
 				mainPanel(
 					useShinyjs(),
+					use_bs_popover(),
 					#h2("Template"),
 					#p("download template as a zip file."),
 					# shiny::a(href = paste0(url_github_castshiny,
@@ -41,7 +42,8 @@ function() {
 					
 					# Define Files----
 					h2("Identify files"),
-					div(style = "margin-bottom: 20px", p(em(paste0("Names for each data input file are specified in the metadata file '",
+					div(style = "margin-bottom: 20px", 
+						 p(em(paste0("Names for each data input file are specified in the metadata file '",
 								fn_default_check_input_cast_metadata,
 								".'")))),
 					# table for imported files
@@ -104,12 +106,21 @@ function() {
 							column(6,
 									 p(tagList(
 									 	strong("Exclude outliers: "),
-									 	icon("info-circle", style = "color: #2fa4e7", id="outlierInfo") |> 
-									 		bsplus::bs_embed_popover(
-									 			title = "Helpful Hints", 
-									 			content = "To modify, change the removeOutliers parameter in _CASTool_Metadata.xlsx.",
-									 			placement = "right", 
+						 	icon("info-circle", 
+									 		  style = "color: #2fa4e7", 
+									 		  id="outlierInfo") |>
+									 		bs_embed_popover(
+									 			title = "Helpful Hints",
+									 			content = "To modify, change the removeOutliers parameter in '_CASTool_MetaData.xlsx'.",
+									 			placement = "right",
 									 			trigger = "hover"))),
+									 	
+									 # bsPopover(id="outlierInfo", 
+									 # 			 title = HTML("<b>Helpful Hints</b>"), 
+									 # 			 content = HTML("To modify, change the removeOutliers parameter in _CASTool_Metadata.xlsx."),
+									 # 			 placement = "right", 
+									 # 			 trigger = "hover"),
+									 
 								 div(class = "pill", textOutput("txt_check_outliers"))
 								 )
 								 # radioButtons("rad_check_outliers",

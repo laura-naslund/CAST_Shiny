@@ -14,7 +14,6 @@
 			  useShinyjs(),     # activate Shinyjs commands
 			  use_bs_tooltip(), # activate bsplus tooltips
 			  bsplus::use_bs_popover(),
-			  # theme = shinytheme("spacelab"),
 			  tab_code_about(),
 			  tab_code_checkfiles(),
 			  tab_code_setup(),

@@ -14,7 +14,62 @@ function(input, output, session) {
 		# 	check_credentials = shinymanager::check_credentials(credentials)
 		# )
 	
-## ABOUT ----
+# Sections headers by tab
+	
+# SESSION ----
+# CoPilot help, 2026-03-09
+# per session folders
+	# these setting override what is in Global.R
+	# every user writes to their own folder
+	# .../CASTool_USEPA_<session-token>/{Data,Results} under tempdir(),
+
+	app_name <- "CASTool_USEPA"   # keep in sync with global
+	base_session_dir <- file.path(tempdir(), 
+											paste0(app_name, "_", 
+													 session$token))
+	# have BASE_DIR in GLOBAL
+	
+	dn_data     <- file.path(base_session_dir, "Data")
+	dn_results  <- file.path(base_session_dir, "Results")
+	dn_rmd_html <- file.path(base_session_dir, "RMD_HTML")
+	
+	# Create the dirs once per session
+	dir.create(dn_data,     recursive = TRUE, showWarnings = FALSE)
+	dir.create(dn_results,  recursive = TRUE, showWarnings = FALSE)
+	dir.create(dn_rmd_html, recursive = TRUE, showWarnings = FALSE)
+	# add
+	dir.create(file.path(dn_data, dn_checked),
+				  recursive = TRUE,
+				  showWarnings = FALSE)
+	dir.create(file.path(dn_data, dn_import),
+				  recursive = TRUE, 
+				  showWarnings = FALSE)
+	
+	
+	# Clean just this session's folders (your helper)
+	# clean_dir(dn_data,    boo_dir = FALSE)
+	# clean_dir(dn_results, boo_dir = FALSE)
+	# if just created for this session don't need to clean
+	
+	# Optional: remove on session end
+	session$onSessionEnded(function() {
+		unlink(base_session_dir, recursive = TRUE, force = TRUE)
+	})
+	
+## other
+	
+	react_report_targetsiteid <- reactiveVal("")
+	
+	# copy temp www stress summ fragment file
+	file.copy(from = file.path("www", 
+										"RMD_HTML",
+										"html_frag_blank.html"),
+				 to = file.path(dn_rmd_html,
+				 					"ShinyHTML_StressSumm.html"),
+				 overwrite = TRUE)
+
+
+# ABOUT ----
 	
 # CHECK ----
 	
@@ -38,7 +93,7 @@ function(input, output, session) {
 			prog_detail <- "Import New Files..."
 			message(paste0("\n", prog_detail))
 			# Number of increments
-			prog_n <- 4
+			prog_n <- 7
 			prog_sleep <- 0.25
 			
 			### 01, Import ----
@@ -169,7 +224,31 @@ function(input, output, session) {
 			# return list of files
 			zip_contents_input <- import_filenames
 			
-			### 05, Info Pop Up ----
+			### 05, zip metadata ----
+			prog_detail <- "Metadata File"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			
+			# check for "_CASTool_Metadata.xlsx"
+			boo_unzip_metadata_xlsx <- "_CASTool_Metadata.xlsx" %in% zip_contents_input
+			if(boo_unzip_metadata_xlsx == FALSE) {
+				msg <- paste("Import data is missing '_CASTool_Metadata.xlsx'\n",
+								 "Add this file before continuing.")
+				shinyalert::shinyalert(title = "Check File Inputs",
+											  text = msg,
+											  type = "error")
+				validate(msg)
+			}## boo_unzip_metadata_xlsx
+			
+			### 06, Info Pop Up ----
+			prog_detail <- "Info Pop Up"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			
 			msg <- paste("Import of files is complete.\n",
 							 "'Verify' all files are included.",
 							 "Then 'Check' the files.",
@@ -180,7 +259,13 @@ function(input, output, session) {
 										  closeOnEsc = TRUE,
 										  closeOnClickOutside = TRUE)
 			
-			### 06, Update UI ----
+			### 07, Update UI ----
+			prog_detail <- "Update UI"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			
 			shinyjs::enable("but_check_check")
 			
 		},
@@ -382,7 +467,7 @@ function(input, output, session) {
 	
 	## Import, Files, missing ----
 	output$txt_import_files_missing <- renderText({
-		
+	
 		inFile <- input$fn_input_check_uload
 		
 		# Blank if no data
@@ -557,9 +642,11 @@ function(input, output, session) {
 			incProgress(1/prog_n, detail = prog_detail)
 			Sys.sleep(prog_sleep)
 			
-			# define checkInputs parameters
-			in.dir <- file.path(getwd(), dn_data, dn_import)
-			out.dir <- file.path(getwd(), dn_data, dn_checked)
+			# # define checkInputs parameters
+			# in.dir <- file.path(getwd(), dn_data, dn_import)
+			# out.dir <- file.path(getwd(), dn_data, dn_checked)
+			in.dir <- file.path(dn_data, dn_import)
+			out.dir <- file.path(dn_data, dn_checked)
 			fn.inputcheck <- system.file("extdata", 
 												  "CASTool_InputCheck.xlsx",
 												  package = "CASTfxn")
@@ -618,28 +705,22 @@ function(input, output, session) {
 			Sys.sleep(prog_sleep)
 		
 			TableOne    <- list.Tables$TableOne
-			write.table(TableOne, 
+			write.csv(TableOne, 
 							file.path(out.dir, 
 										 region, 
 										 dn_checked_sk, 
-										 "TableOne.tab"),
-							sep = "\t", 
-							col.names = TRUE, 
-							row.names = FALSE, 
-							append = FALSE)
+										 "TableOne.csv"),
+							row.names = FALSE)
 			
 			check_qctable_1_save(TRUE) # trigger for table
 			
 			TableTwo    <- list.Tables$TableTwo
-			write.table(TableTwo, 
+			write.csv(TableTwo, 
 							file.path(out.dir, 
 										 region, 
 										 dn_checked_sk,
-										 "TableTwo.tab"),
-							sep = "\t", 
-							col.names = TRUE, 
-							row.names = FALSE, 
-							append = FALSE)
+										 "TableTwo.csv"),
+							row.names = FALSE)
 			
 			check_qctable_2_save(TRUE) # trigger for table
 			
@@ -694,8 +775,10 @@ function(input, output, session) {
 										  dn_checked_sk)
 			fn_4zip <- list.files(path = path_4zip,
 										 full.names = TRUE,
-										 pattern = "\\.tab$")
-			zip::zip(file.path(getwd(), dn_data, "check_qctables.zip"), 
+										 pattern = "^Table(One|Two)\\.csv$")
+			# zip::zip(file.path(getwd(), dn_data, "check_qctables.zip"),
+			zip::zip(file.path(dn_data, 
+									 "check_qctables.zip"), 
 						files = fn_4zip,
 						mode = "cherry-pick")
 			### RDS
@@ -708,7 +791,8 @@ function(input, output, session) {
 			
 			fn_4zip <- c(fn_4zip_rds, fn_4zip_extra)
 			
-			zip::zip(file.path(getwd(), dn_data, "check_rds.zip"), 
+			# zip::zip(file.path(getwd(), dn_data, "check_rds.zip"), 
+			zip::zip(file.path(dn_data, "check_rds.zip"), 
 						fn_4zip,
 						mode = "cherry-pick")
 			
@@ -753,10 +837,12 @@ function(input, output, session) {
 		req(check_qctable_1_save())
  
 		# region
-		dn_data <- "Data"
-		dn_results <- "Results"
-		in.dir <- file.path(getwd(), dn_data, "input")
-		out.dir <- file.path(getwd(), dn_data, "checked")
+		# dn_data <- "Data"
+		# dn_results <- "Results"
+		# in.dir <- file.path(getwd(), dn_data, "input")
+		# out.dir <- file.path(getwd(), dn_data, "checked")
+		in.dir <- file.path(dn_data, dn_import)
+		out.dir <- file.path(dn_data, dn_checked)
 		path_meta <- file.path(in.dir, fn_default_check_input_cast_metadata)
 
 		# Blank no metadata file
@@ -783,9 +869,8 @@ function(input, output, session) {
 		} ## IF ~ is.null(inFile)
 
 		# import file
-		df_table <- read.delim(inFile,
-									  header = TRUE,
-									  sep = "\t")
+		df_table <- read.csv(inFile,
+									header = TRUE)
 
 		# QC_Passed
 		df_table <- df_table |>
@@ -832,10 +917,12 @@ function(input, output, session) {
 		req(check_qctable_2_save())
 		
 		# region
-		dn_data <- "Data"
-		dn_results <- "Results"
-		in.dir <- file.path(getwd(), dn_data, "input")
-		out.dir <- file.path(getwd(), dn_data, "checked")
+		# dn_data <- "Data"
+		# dn_results <- "Results"
+		# in.dir <- file.path(getwd(), dn_data, "input")
+		# out.dir <- file.path(getwd(), dn_data, "checked")
+		in.dir <- file.path(dn_data, dn_import)
+		out.dir <- file.path(dn_data, dn_checked)
 		path_meta <- file.path(in.dir, fn_default_check_input_cast_metadata)
 		
 		# Blank no metadata file
@@ -862,9 +949,8 @@ function(input, output, session) {
 		} ## IF ~ is.null(inFile)
 		
 		# import file
-		df_table <- read.delim(inFile,
-									  header = TRUE,
-									  sep = "\t")
+		df_table <- read.csv(inFile,
+									  header = TRUE)
 		# QC_Passed
 		# df_table <- df_table |>
 		# 	dplyr::mutate(QC_II = grepl("^All", IntegrityIssues),
@@ -953,6 +1039,37 @@ function(input, output, session) {
 		react_setup_format()
 	})
 	
+	## Set Up, SiteID, Selected and Report different ----
+	observeEvent(input$si_checked_sites_targ, {
+		
+		# ensure input is not NULL or empty string
+		req(input$si_checked_sites_targ, 
+			 input$si_checked_sites_targ != "")
+		
+		# ensure reactive target is not empty string
+		req(react_report_targetsiteid() != "")
+		
+		# trigger only when different
+		if (!identical(input$si_checked_sites_targ, 
+							react_report_targetsiteid())) {
+			
+			shinyalert::shinyalert(
+				title = "Selection Mismatch",
+				text = paste0("Selected target site id does not match the report results target site id.\n",
+								  "\n",
+								  "If you run the report the current results will be erased."),
+				type = "warning"
+			)
+		}
+		
+		# update UI prior to report run
+		# hide other tabs
+		updateRadioButtons(session,
+								 inputId = "rad_report_tabs",
+								 selected = "No")
+		
+	})## oe ~ target site id
+	
 	## Set Up, Files, Checked ----
 	observeEvent(input$fn_input_setup_checked_uload, {
 		shiny::withProgress({
@@ -961,7 +1078,7 @@ function(input, output, session) {
 			prog_detail <- "Import Checked Files..."
 			message(paste0("\n", prog_detail))
 			# Number of increments
-			prog_n <- 6
+			prog_n <- 7
 			prog_sleep <- 0.25
 			
 			## 01, Import ----
@@ -993,7 +1110,26 @@ function(input, output, session) {
 			# Clean Directory
 			clean_dir(file.path(dn_data, dn_checked))
 			
-			## 03, Unzip ----
+			### 03xx, zip metadata ----
+			prog_detail <- "Metadata File"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			
+			# check for "CASTmetadata.rds"
+			files_unzip <- zip::zip_list(fn_inFile)
+			boo_unzip_metadata_rds <- "CASTmetadata.rds" %in% files_unzip$filename
+			if(boo_unzip_metadata_rds == FALSE) {
+				msg <- paste("Import data is missing 'CASTmetadata.rds'",
+								 "Ensure you are using the check files zip and not raw data.")
+				shinyalert::shinyalert(title = "Set Up Tool",
+											  text = msg,
+											  type = "error")
+				validate(msg)
+			}## boo_metadata_rds
+			
+			## 04, Unzip ----
 			prog_detail <- "Unzip Files"
 			message(paste0("\n", prog_detail))
 			# Increment the progress bar, and update the detail text.
@@ -1006,12 +1142,13 @@ function(input, output, session) {
 			## only the one file so is faster
 			zip::unzip(fn_inFile,
 							 overwrite = TRUE,
-							 exdir = file.path(tempdir(), dn_checked_sk),
+							 exdir = file.path(dn_data, dn_checked_sk),
 							 files = fn_metadata, 
 							 junkpaths = TRUE)
 			
 			
-			## 04, Catalog ----
+			
+			## 05, Catalog ----
 			prog_detail <- "Catalog Files"
 			message(paste0("\n", prog_detail))
 			# Increment the progress bar, and update the detail text.
@@ -1019,7 +1156,7 @@ function(input, output, session) {
 			Sys.sleep(prog_sleep)
 			
 			# open metadata
-			data_CASTmeta_temp <- readRDS(file.path(tempdir(),
+			data_CASTmeta_temp <- readRDS(file.path(dn_data,
 																 dn_checked_sk, 
 																 "CASTmetadata.rds"))
 			# get region
@@ -1069,7 +1206,7 @@ function(input, output, session) {
 			# return list of files
 			zip_contents_checked <- checked_filenames
 			
-			## 05, Update UI ----
+			## 06, Update UI ----
 			prog_detail <- "Update SelectInputs"
 			message(paste0("\n", prog_detail))
 			# Increment the progress bar, and update the detail text.
@@ -1192,7 +1329,13 @@ function(input, output, session) {
 			# Enable Buttons
 			shinyjs::enable("but_report_run")
 			
-			## 06, Info Pop Up ----
+			## 07, Info Pop Up ----
+			prog_detail <- "Info Pop Up"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			
 			msg <- paste("Checked files uploaded.",
 							 "Select a target site before running the report.",
 							 sep = "\n")
@@ -1354,7 +1497,7 @@ function(input, output, session) {
 
 		# don't have dir so use temp version
 		# map file name
-		path_CASTmeta_temp <- file.path(tempdir(),
+		path_CASTmeta_temp <- file.path(dn_data,
 												  dn_checked_sk,
 												  "CASTmetadata.rds")
 		# ensure file exists
@@ -1496,7 +1639,8 @@ function(input, output, session) {
 	react_report_run <- reactiveVal(FALSE)
 	
 	## siteid ----
-	output$txt_rep_siteid <- renderText({
+	### Report
+	output$txt_rep_siteid_report <- renderText({
 		# The expression here is reactive; it updates when input$text_input_id changes
 		if (is.null(sel_targsite()) | sel_targsite() == "") {
 			txt_siteid <- "..No target site selected.."
@@ -1506,13 +1650,75 @@ function(input, output, session) {
 		#paste0("Target Site: ", txt_siteid)
 		txt_siteid
 	})
+	### Wshed Stress
+	output$txt_rep_siteid_wshedstress <- renderText({
+		# The expression here is reactive; it updates when input$text_input_id changes
+		if (is.null(react_report_targetsiteid()) |
+			 react_report_targetsiteid() == "") {
+			txt_siteid <- "..Report not generated.."
+		} else {
+			txt_siteid <- react_report_targetsiteid()
+		}## IF
+		#paste0("Target Site: ", txt_siteid)
+		txt_siteid
+	})
+	### Cand Cause
+	output$txt_rep_siteid_candcause <- renderText({
+		# The expression here is reactive; it updates when input$text_input_id changes
+		if (is.null(react_report_targetsiteid()) | 
+			 react_report_targetsiteid() == "") {
+			txt_siteid <- "..No target site selected.."
+		} else {
+			txt_siteid <- react_report_targetsiteid()
+		}## IF
+		#paste0("Target Site: ", txt_siteid)
+		txt_siteid
+	})
+	### WoE Summ
+	output$txt_rep_siteid_woesumm <- renderText({
+		# The expression here is reactive; it updates when input$text_input_id changes
+		if (is.null(react_report_targetsiteid()) | 
+			 react_report_targetsiteid() == "") {
+			txt_siteid <- "..No target site selected.."
+		} else {
+			txt_siteid <- react_report_targetsiteid()
+		}## IF
+		#paste0("Target Site: ", txt_siteid)
+		txt_siteid
+	})
+	### Stress Summ
+	output$txt_rep_siteid_stresssumm <- renderText({
+		# The expression here is reactive; it updates when input$text_input_id changes
+		if (is.null(react_report_targetsiteid()) | 
+			 react_report_targetsiteid() == "") {
+			txt_siteid <- "..No target site selected.."
+		} else {
+			txt_siteid <- react_report_targetsiteid()
+		}## IF
+		#paste0("Target Site: ", txt_siteid)
+		txt_siteid
+	})
+	### Data Gaps
+	output$txt_rep_siteid_gaps <- renderText({
+		# The expression here is reactive; it updates when input$text_input_id changes
+		if (is.null(react_report_targetsiteid()) | 
+			 react_report_targetsiteid() == "") {
+			txt_siteid <- "..No target site selected.."
+		} else {
+			txt_siteid <- react_report_targetsiteid()
+		}## IF
+		#paste0("Target Site: ", txt_siteid)
+		txt_siteid
+	})
 	
 	## button, report ----
 	observeEvent(input$but_report_run, {
 		# launch skeleton code
 		
+		tic_oe_report <- Sys.time()
+		
 		# QC, site not null or ""
-			if(is.null(sel_targsite()) | sel_targsite() == "") {
+		if(is.null(sel_targsite()) | sel_targsite() == "") {
 			msg <- paste("No target site selected!",
 							 "\n",
 							 "Return to 'Set Up Tool' and 'Select target site' to make selection.",
@@ -1525,12 +1731,44 @@ function(input, output, session) {
 			validate(msg)
 		}## IF ~ check_files_fails
 		
+		# # QC selected == report id
+		# if(is.null(sel_targsite()) | sel_targsite() == "") {
+		# 	msg <- paste("Attempt to run report with different ",
+		# 					 "\n",
+		# 					 "Return to 'Set Up Tool' and 'Select target site' to make selection.",
+		# 					 sep = "\n")
+		# 	shinyalert::shinyalert(title = "Run Report",
+		# 								  text = msg,
+		# 								  type = "error",
+		# 								  closeOnEsc = TRUE,
+		# 								  closeOnClickOutside = TRUE)
+		# 	validate(msg)
+		# }## IF ~ check_files_fails2
+		
+		## Report Run Variables ----
+		# set target siteid to user selected value
+		react_report_targetsiteid(sel_targsite())
+		# hide other tabs
+		## **UI updates only at *end* of entire process**
+		updateRadioButtons(session,
+								 inputId = "rad_report_tabs",
+								 selected = "No")
+		# (ok since setting to "no")
+		# hideTab(inputId = "navbar",
+		# 		  target = "tab_candcause")
+		# hideTab(inputId = "navbar",
+		# 		  target = "tab_woesumm")
+		# hideTab(inputId = "navbar",
+		# 		  target = "tab_stresssumm")
+		# hideTab(inputId = "navbar",
+		# 		  target = "tab_gaps")
+
 		### Global Variables ----
 		# define for sourced Skeleton Code file
 		
 		# borrow from SetUp (04, Catalog)
 		# open metadata
-		data_CASTmeta_temp <- readRDS(file.path(tempdir(), 
+		data_CASTmeta_temp <- readRDS(file.path(dn_data, 
 															 dn_checked_sk, 
 															 "CASTmetadata.rds"))
 		# get region
@@ -1553,153 +1791,319 @@ function(input, output, session) {
 		out.dir  <- file.path(dn_results)
 		boo.plot.user <- TRUE
 		
-		wd <- getwd()
+		# wd <- getwd()
+		wd <- base_session_dir
 		gitpath <- NULL # Not needed for Shiny
 		dir_rmd <- system.file("rmd", 
 									  package = "CASTfxn")
-
+		
 		
 		## Skeleton Code ----
+		tic_report <- Sys.time()
 		# code (wrap with progress pop up)
 		shiny::withProgress({
 			
-			
-		# browser()
-		# 	cat("debug here")
-		# 	
-		# # debugging
-		# source("C:/Users/Erik.Leppo/Documents/GitHub/CASTfxn/inst/shiny-examples/CASTool/CASTool.r",
-		# 		 local = TRUE)
-		# 	
-		# 	
+			# browser()
+			# 	cat("debug here")
+			# 	
+			# # debugging
+			# source("C:/Users/Erik.Leppo/Documents/GitHub/CASTfxn/inst/shiny-examples/CASTool/CASTool.r",
+			# 		 local = TRUE)
+			# 	
+			# 	
 			
 			# Skeleton Code
 			source(path_skelcode, local = TRUE)
 		}, message = "Skeleton Code"
 		)## withProgress
+		# report time in skeleton code,
+		# need exposed here for shiny alert
+		toc_report <- Sys.time()
+		msg_time_report <- paste0("Report (min): ",
+										  round(difftime(toc_report,
+										  					  tic_report,
+										  					units = "min"),
+										  		2))
+			### Post Skeleton ----
 		
-		# Enabled buttons ----
-		shinyjs::enable("rad_report_tabs")
-		shinyjs::enable("but_report_dload")
-		shinyjs::enable("but_dload_wshed_figs")
-		
-		## create zip ----
+		shiny::withProgress({
+			## 00, Initialize----
+			prog_detail <- "Clean Up..."
+			message(paste0("\n", prog_detail))
+			# Number of increments
+			prog_n <- 5
+			prog_sleep <- 0.25
+			
+			### 01, Enabled buttons ----
+			prog_detail <- "01, Enable Buttons"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			
+			#
+			shinyjs::enable("rad_report_tabs")
+			shinyjs::enable("but_report_dload")
+			shinyjs::enable("but_dload_wshed_figs")
+			
+			## 02, create zip ----
+			prog_detail <- "02, Create Zip"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			
+			# get files 4 zip
+			stat_id <- react_report_targetsiteid() #sel_targsite() # reactive value
+			dn_zip_stat <- file.path(dn_results,
+											 react_setup_region(),
+											 stat_id)
+			dn_zip_hist <- file.path(dn_results,
+											 react_setup_region(),
+											 "_Histograms")
+			# select most recent status csv
+			status_file <- list.files(
+				file.path(
+					dn_results, 
+					react_setup_region())) |> 
+				stringr::str_subset("Status") |> 
+				sort() |> 
+				dplyr::last()
+			
+			fn_status <- file.path(dn_results,
+										  react_setup_region(), 
+										  status_file)
+			fn_zip_stat <- list.files(path = dn_zip_stat,
+											  recursive = TRUE,
+											  full.names = TRUE)
+			fn_zip_hist <- list.files(path = dn_zip_hist,
+											  recursive = TRUE,
+											  full.names = TRUE)
+			# combined files
+			fn_zip <- normalizePath(c(fn_zip_stat, 
+											  fn_zip_hist, 
+											  fn_status))
+			# get relative path (to zip file not wd)
+			## replace normalizePath 2 forward slash with back slash
+			# need 4 forward to make the 2 forward as forward is escape
+			# do same in search paths
+			# replace with last dir
+			# fn_zip <- gsub(paste0("^", 
+			# 							 gsub("\\\\", 
+			# 							 	  "/", 
+			# 							 	  normalizePath(dn_results)),
+			# 							 "/?"),
+			# 					paste0(basename(dn_results), "/"),
+			# 					gsub("\\\\", "/", fn_zip))
 
-		# get files 4 zip
-		stat_id <- sel_targsite() # reactive value
-		dn_zip_stat <- file.path(dn_results,
-										 react_setup_region(),
-										 stat_id)
-		dn_zip_hist <- file.path(dn_results,
-										 react_setup_region(),
-										 "_Histograms")
-		# select most recent status csv
-		status_file <- list.files(
-								file.path(
-									dn_results, 
-									react_setup_region())) |> 
-							stringr::str_subset("Status") |> 
-							sort() |> 
-							dplyr::last()
-		dn_status <- file.path(dn_results,
-									  react_setup_region(), 
-									  status_file)
-		fn_zip_stat <- list.files(path = dn_zip_stat,
-										  recursive = TRUE,
+			# Copy files to new dir
+			## staging folder for zip
+			dn_zip_stage <- "zip_stage_results"
+			path_zip_stage <- file.path(dirname(dn_results), dn_zip_stage)
+			unlink(path_zip_stage, recursive = TRUE) # remove if present
+			dir.create(path_zip_stage)
+			## zip stage dir
+			dn_zip_base <- normalizePath(file.path(dirname(dn_results)))
+			## copy to staging folder
+			copy_files_rebase_base(files = fn_zip,
+										  anchor = normalizePath(dn_results),
+										  new_root = normalizePath(path_zip_stage))
+			
+			# files for zip
+			fn_zip_stage_full <- list.files(path_zip_stage, 
+													  recursive = TRUE,
+													  full.names = TRUE)
+			
+			# build archive paths (paths INSIDE the zip)
+			# remove the folder prefix and leading slash
+			fn_zip_stage_rel <- substring(fn_zip_stage_full, 
+													nchar(path_zip_stage) + 2) 
+			# name each full path with its zip-internal path
+			names(fn_zip_stage_full) <- fn_zip_stage_rel
+			
+			# create zip
+			tic_zip_report <- Sys.time()
+			# zip::zip(file.path(dirname(dn_results), 
+			# 						 "report_results.zip"),
+			# 			files = fn_zip,
+			# 			mode = "cherry-pick")
+			# Need to modify to *not* use cherry-pick
+			# fails on ":" in "C:" for normalized Paths
+			#
+			# Needs relative Paths and root folder
+			# since from different directories had to use a staging area
+			zip::zip(file.path(path_zip_stage,
+									 "report_results.zip"),
+						files = fn_zip_stage_rel,
+						root = path_zip_stage)
+			toc_zip_report <- Sys.time()
+			msg_time_zip_report <- paste0("Zip, report (sec): ",
+							  round(difftime(toc_zip_report, 
+							  					tic_zip_report,
+							  					units = "secs"), 2))
+			message(msg_time_zip_report)
+			
+			## 03, reactiveval updates ----
+			prog_detail <- "03, Update ReactiveVal"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			# used to indicate report run
+			react_report_run(TRUE) # gaps
+			
+			## 04, Stress Summ RMD ----
+			prog_detail <- "04, Build Stressor Summary"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			# rend_input <- file.path("external",
+			# 								"RMD",
+			# 								"display_images_StressSumm.Rmd")
+			#
+			# copy RMD so works in Shiny
+			## same issue for stress summ as getReport in skeleton code
+			## render switches working directory to location of RMD
+			rmd2copy <- list.files(file.path("external",
+														"RMD"),
+										  pattern = "display_images_StressSumm\\.Rmd$",
 										  full.names = TRUE)
-		fn_zip_hist <- list.files(path = dn_zip_hist,
-										  recursive = TRUE,
-										  full.names = TRUE)
-		# combined files
-		fn_zip <- c(fn_zip_stat, fn_zip_hist, dn_status)
-		# create zip
-		tic <- Sys.time()
-		zip::zip(file.path(dn_results, "report_results.zip"),
-					files = fn_zip)
-		toc <- Sys.time()
-		msg <- paste0("zip time (sec): ",
-						  round(difftime(toc, tic, units = "secs"), 2))
-		message(msg)
-
-		## reactiveval updates ----
-		# used to indicate report run
-		react_report_run(TRUE) # gaps
-	
-		## Stress Summ RMD ----
-		# rend_input <- file.path("external",
-		# 								"RMD",
-		# 								"display_images_StressSumm.Rmd")
-		#
-		# copy RMD so works in Shiny
-		## same issue for stress summ as getReport in skeleton code
-		## render switches working directory to location of RMD
-		rmd2copy <- list.files(file.path("external",
-													"RMD"),
-									  pattern = "display_images_StressSumm\\.Rmd$",
-									  full.names = TRUE)
-		file.copy(rmd2copy, ".", overwrite = TRUE)
-		rend_input <- "display_images_StressSumm.Rmd"
-		path_shiny_www <- file.path("www",
-											 "RMD_HTML")
-		 # browser()
-		rmarkdown::render(input = rend_input,
-								# output_dir = path_shiny_www,
-								output_file = file.path(path_shiny_www,
-																"ShinyHTML_StressSumm.html"),
-								params = list(react_setup_region = react_setup_region)
-		)
-		
-		## Wshed Stress Fig Zip ----
-
-		# get files 4 zip
-		stat_id <- sel_targsite() # reactive value
-		dn_zip_ws <- file.path(dn_results,
-									  react_setup_region(),
-									  stat_id,
-									  "SiteInfo")
-		fn_zip_ws <- list.files(path = dn_zip_ws,
-										pattern = "_WSstress_.*\\.png$",
-										full.names = TRUE,
-										recursive = FALSE)
-		# create zip
-		tic <- Sys.time()
-		zip::zip(file.path(dn_results, "WSstress_figs.zip"),
-					files = fn_zip_ws,
-					mode = "cherry-pick")
-		toc <- Sys.time()
-		msg <- paste0("zip time (sec): ",
-						  round(difftime(toc, tic, units = "secs"), 2))
-		message(msg)
-		
-
-		# get watershed variables
-		## fn_zip_ws above
-		# extract watershed variables
-		fn_zip_ws_var <- sub("^.*_WSstress_([^/]+)\\.png$", "\\1", 
-									basename(fn_zip_ws))
-		
-		
-		# have data_stressorinfoWS in env so use it
-		if (exists("data_stressorinfoWS")) {
+			file.copy(rmd2copy, ".", overwrite = TRUE)
+			rend_input <- "display_images_StressSumm.Rmd"
+			path_shiny_www <- file.path(dn_rmd_html)
+			# browser()
+			rmarkdown::render(input = rend_input,
+									# output_dir = path_shiny_www,
+									output_file = file.path(path_shiny_www,
+																	"ShinyHTML_StressSumm.html"),
+									params = list(react_setup_region = react_setup_region)
+			)
 			
-			df_plots_data_stressorinfoWS <- data_stressorinfoWS %>%
-				# keep columns need
-				dplyr::select(StreamCatVar, Label) %>%
-				# remove duplicates
-				unique() %>%
-				# note if have plot
-				dplyr::mutate(plot_present = StreamCatVar %in% fn_zip_ws_var)
+			## 05, Wshed Stress Fig Zip ----
+			prog_detail <- "05, Create WS Zip"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
 			
-			react_wshed_var(df_plots_data_stressorinfoWS)
+			# get files 4 zip
+			stat_id <- react_report_targetsiteid() # sel_targsite() # reactive value
+			dn_zip_ws <- file.path(dn_results,
+										  react_setup_region(),
+										  stat_id,
+										  "SiteInfo")
+			fn_zip_ws <- list.files(path = dn_zip_ws,
+											pattern = "_WSstress_.*\\.png$",
+											full.names = TRUE,
+											recursive = FALSE)
+			# create zip----
+			tic_zip_wsstress <- Sys.time()
+			zip::zip(file.path(dn_results, "WSstress_figs.zip"),
+						files = fn_zip_ws,
+						mode = "cherry-pick")
+			toc_zip_wsstress <- Sys.time()
+			msg_time_zip_wsstress <- paste0("Zip, watershed stressors (sec): ",
+							  round(difftime(toc_zip_wsstress, 
+							  					tic_zip_wsstress, 
+							  					units = "secs"), 2))
+			message(msg_time_zip_wsstress)
 			
-		}## exists ~ data_stressorinfoWS
+			
+			## 06, get watershed variables----
+			prog_detail <- "06, WS Variables"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			
+			## fn_zip_ws above
+			# extract watershed variables
+			fn_zip_ws_var <- sub("^.*_WSstress_([^/]+)\\.png$", "\\1", 
+										basename(fn_zip_ws))
+			
+			
+			# have data_stressorinfoWS in env so use it
+			if (exists("data_stressorinfoWS")) {
+				
+				df_plots_data_stressorinfoWS <- data_stressorinfoWS %>%
+					# keep columns need
+					dplyr::select(StreamCatVar, Label) %>%
+					# remove duplicates
+					unique() %>%
+					# note if have plot
+					dplyr::mutate(plot_present = StreamCatVar %in% fn_zip_ws_var)
+				
+				react_wshed_var(df_plots_data_stressorinfoWS)
+				
+			}## exists ~ data_stressorinfoWS
+			
+			## 07, Target Site Status----
+			prog_detail <- "06, Target Site Status"
+			message(paste0("\n", prog_detail))
+			# Increment the progress bar, and update the detail text.
+			incProgress(1/prog_n, detail = prog_detail)
+			Sys.sleep(prog_sleep)
+			
+			# get status for use in pop up
+			# find file
+			# fn_status <- list.files(
+			# 	file.path(dn_results, react_setup_region()),
+			# 	pattern = "^TargetSiteID_Status_.*\\.csv$",
+			# 	full.names = TRUE)
+			# defined above as latest date in case ran multiple
+			# fn_status
+			## read file
+			if(length(fn_status) == 1) {
+				df_status <- read.csv(fn_status)
+			} else {
+				df_status <- data.frame(TargetSiteID = NA,
+												status = "error",
+												reason = "no status file")
+			}## file.exists
+			
+			
+			
+			
+			
+		}, message = "Report Clean Up"
+		)## withProgress
 		
-		### Info Pop Up ----
-		msg <- paste("Creation of report is complete.\n",
+		toc_oe_report <- Sys.time()
+		msg_time_oe_report <- paste0("Total (min): ",
+											  round(difftime(toc_oe_report, 
+											  					  tic_oe_report, 
+											  					  units = "min"),
+											  		  2))
+		
+		#### Info Pop Up ----
+		msg <- paste("Creation of report is complete.", 
+						 "\n",
+						 "Status",
+						 "------",
+						 df_status$status, 
+						 "\n",
+						 "Reason",
+						 "------",
+						 df_status$reason,
+						 "\n",
+						 "Times",
+						 "------",
+						 msg_time_oe_report,
+						 "------",
+						 msg_time_report,
+						 msg_time_zip_report,
+						 msg_time_zip_wsstress,
+						 "\n",
+						 "Components",
+						 "------",
+						 "stressors (n) = #",
+						 "responses (n) = #",
+						 "with stressors = T/F",
 						 sep = "\n")
 		shinyalert::shinyalert(title = "Generate Report",
 									  text = msg,
-									  type = "info",
+									  type = "success",
 									  closeOnEsc = TRUE,
 									  closeOnClickOutside = TRUE)
 		
@@ -1741,10 +2145,16 @@ function(input, output, session) {
 					 ".zip")
 		} ,
 		content = function(fname) {
+		
 			# zip file created when report run
 			#
 			# file for download
-			file.copy(file.path(dn_results, "report_results.zip"), fname)
+			dn_zip_stage <- "zip_stage_results"
+			path_zip_stage <- file.path(dirname(dn_results), dn_zip_stage)
+			
+			file.copy(file.path(path_zip_stage,
+									  "report_results.zip"), 
+						 fname)
 		}##content~END
 		#, contentType = "application/zip"
 	)##download ~ check files
@@ -1795,7 +2205,7 @@ function(input, output, session) {
 		# report run
 		req(react_report_run())
 
-		stat_id <- sel_targsite()
+		stat_id <- react_report_targetsiteid() #sel_targsite()
 		dn_plots <- file.path(dn_results,
 										react_setup_region(),
 										stat_id,
@@ -1844,7 +2254,7 @@ function(input, output, session) {
 	output$ws_stress_high <- DT::renderDT({
 		req(react_report_run())
 		
-		stat_id <- sel_targsite()
+		stat_id <- react_report_targetsiteid() #sel_targsite()
 		
 		dn_tab <- file.path(dn_results,
 									 react_setup_region(),
@@ -1888,7 +2298,8 @@ function(input, output, session) {
 			# zip file created when report run
 			#
 			# file for download
-			file.copy(file.path(dn_results, "WSstress_figs.zip"), fname)
+			file.copy(file.path(dn_results, "WSstress_figs.zip"), 
+						 fname)
 		}##content~END
 		#, contentType = "application/zip"
 	)##download ~ check files
@@ -2000,7 +2411,10 @@ function(input, output, session) {
 	})
 	
 	woe_comms <- reactive({
-		woe_folds <- list.files(file.path(dn_results, react_setup_region(), sel_targsite()))
+		stat_id <- react_report_targetsiteid() # sel_targsite()
+		woe_folds <- list.files(file.path(dn_results, 
+													 react_setup_region(),
+													 stat_id))
 		intersect(woe_folds, c("ALG", "BMI", "FISH"))
 	})
 	
@@ -2009,13 +2423,21 @@ function(input, output, session) {
 			if("BMI" %in% woe_comms()){
 				shiny::tagList(
 					# h4(HTML("Stressor(s) not evaluated further due to comparison of <br>target and comparator sample values (benthic macroinvertebrates)")),
-					
+					use_bs_popover(),
 					h4(tagList(
 						HTML("Stressor(s) not evaluated further due to comparison of <br>target and comparator sample values (benthic macroinvertebrates)"),
-						tags$span(icon("info-circle"), id = "bmiElimInfo", style = "color:#2fa4e7;"))),
-					bsPopover(id="bmiElimInfo", title = HTML("<b>Helpful Hints</b>"), 
-								 content = HTML("Stressors receiving a co-occurrence score of -1 for all target site samples, indicating that the stressor sample values were not elevated relative to unimpaired comparator samples if the stress increases with increasing stressor values (e.g. conductivity) or not low if stress decreases with increasing stressor values (e.g., dissolved oxygen)."),
-								 placement = "right", trigger = "hover"),
+						tags$span(icon("info-circle"), 
+									 id = "bmiElimInfo", 
+									 style = "color:#2fa4e7;") |>
+							bs_embed_popover(title = "Helpful Hints",
+												  content = "Stressors receiving a co-occurrence score of -1 for all target site samples, indicating that the stressor sample values were not elevated relative to unimpaired comparator samples if the stress increases with increasing stressor values (e.g. conductivity) or not low if stress decreases with increasing stressor values (e.g., dissolved oxygen).",
+												  placement = "right",
+												  trigger = "hover"))),
+					# bsPopover(id="bmiElimInfo", 
+					# 			 title = HTML("<b>Helpful Hints</b>"), 
+					# 			 content = HTML("Stressors receiving a co-occurrence score of -1 for all target site samples, indicating that the stressor sample values were not elevated relative to unimpaired comparator samples if the stress increases with increasing stressor values (e.g. conductivity) or not low if stress decreases with increasing stressor values (e.g., dissolved oxygen)."),
+					# 			 placement = "right", 
+					# 			 trigger = "hover"),
 					
 					
 					pre(textOutput("df_candcause_elim_DT_bmi")),
@@ -2025,14 +2447,21 @@ function(input, output, session) {
 			if("FISH" %in% woe_comms()){
 				shiny::tagList(
 					# h4(HTML("Stressor(s) not evaluated further due to comparison of <br>target and comparator sample values (fish)")),
-					
+					use_bs_popover(),
 					h4(tagList(
 						HTML("Stressor(s) not evaluated further due to comparison of <br>target and comparator sample values (fish)"),
-						tags$span(icon("info-circle", style = "color: #2fa4e7", id="fishElimInfo"),
-						))),
-					bsPopover(id="fishElimInfo", title = HTML("<b>Helpful Hints</b>"), 
-								 content = HTML("Stressors receiving a co-occurrence score of -1 for all target site samples, indicating that the stressor sample values were not elevated relative to unimpaired comparator samples if the stress increases with increasing stressor values (e.g. conductivity) or not low if stress decreases with increasing stressor values (e.g., dissolved oxygen)."),
-								 placement = "right", trigger = "hover"),
+						tags$span(icon("info-circle",
+											style = "color: #2fa4e7",
+											id="fishElimInfo") |>
+							bs_embed_popover(title = "Helpful Hints",
+												  content = "Stressors receiving a co-occurrence score of -1 for all target site samples, indicating that the stressor sample values were not elevated relative to unimpaired comparator samples if the stress increases with increasing stressor values (e.g. conductivity) or not low if stress decreases with increasing stressor values (e.g., dissolved oxygen).",
+												  placement = "right",
+												  trigger = "hover")))),
+					# bsPopover(id="fishElimInfo", 
+					# 			 title = HTML("<b>Helpful Hints</b>"), 
+					# 			 content = HTML("Stressors receiving a co-occurrence score of -1 for all target site samples, indicating that the stressor sample values were not elevated relative to unimpaired comparator samples if the stress increases with increasing stressor values (e.g. conductivity) or not low if stress decreases with increasing stressor values (e.g., dissolved oxygen)."),
+					# 			 placement = "right",
+					# 			 trigger = "hover"),
 					
 					pre(textOutput("df_candcause_elim_DT_fish")),
 					br())
@@ -2040,14 +2469,22 @@ function(input, output, session) {
 			,
 			if("ALG" %in% woe_comms()){
 				shiny::tagList(
+					use_bs_popover(),
 					# h4(HTML("Stressor(s) not evaluated further due to comparison of <br>target and comparator sample values (algae)")),
 					h4(tagList(
 						HTML("Stressor(s) not evaluated further due to comparison of <br>target and comparator sample values (algae)"),
-						tags$span(icon("info-circle", style = "color: #2fa4e7", id="algElimInfo"),
-						))),
-					bsPopover(id="algElimInfo", title = HTML("<b>Helpful Hints</b>"), 
-								 content = HTML("Stressors receiving a co-occurrence score of -1 for all target site samples, indicating that the stressor sample values were not elevated relative to unimpaired comparator samples if the stress increases with increasing stressor values (e.g. conductivity) or not low if stress decreases with increasing stressor values (e.g., dissolved oxygen)."),
-								 placement = "right", trigger = "hover"),
+						tags$span(icon("info-circle", 
+											style = "color: #2fa4e7", 
+											id="algElimInfo") |>
+									 	bs_embed_popover(title = "Helpful Hints",
+									 						  content = "",
+									 						  placement = "right",
+									 						  trigger = "hover")))),
+					# bsPopover(id="algElimInfo", 
+					# 			 title = HTML("<b>Helpful Hints</b>"), 
+					# 			 content = HTML("Stressors receiving a co-occurrence score of -1 for all target site samples, indicating that the stressor sample values were not elevated relative to unimpaired comparator samples if the stress increases with increasing stressor values (e.g. conductivity) or not low if stress decreases with increasing stressor values (e.g., dissolved oxygen)."),
+					# 			 placement = "right", 
+					# 			 trigger = "hover"),
 					pre(textOutput("df_candcause_elim_DT_alg")),
 					br())
 			}
@@ -2059,7 +2496,7 @@ function(input, output, session) {
 		# trigger created when save table
 		req(react_report_run())
 
-		stat_id <- sel_targsite()
+		stat_id <- react_report_targetsiteid() #sel_targsite()
 		fn_gaps <- paste0(stat_id, "_BMI_DetectsNotEvalFurther.tab")
 		
 		path_table <- file.path(dn_results, 
@@ -2094,7 +2531,7 @@ function(input, output, session) {
 		# trigger created when save table
 		req(react_report_run())
 		
-		stat_id <- sel_targsite()
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		fn_gaps <- paste0(stat_id, "_FISH_DetectsNotEvalFurther.tab")
 		
 		path_table <- file.path(dn_results, 
@@ -2129,7 +2566,7 @@ function(input, output, session) {
 		# trigger created when save table
 		req(react_report_run())
 		
-		stat_id <- sel_targsite()
+		stat_id <- react_report_targetsiteid() #sel_targsite()
 		fn_gaps <- paste0(stat_id, "_ALG_DetectsNotEvalFurther.tab")
 		
 		path_table <- file.path(dn_results, 
@@ -2207,7 +2644,7 @@ function(input, output, session) {
 		# trigger created when save table
 		req(react_report_run())
 
-		stat_id <- sel_targsite()
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		fn_detects <- paste0(stat_id, "_DetectsAll.tab")
 		
 		path_table <- file.path(dn_results, 
@@ -2242,18 +2679,28 @@ output$woe_tab_ui <- renderUI({
 	
 	shiny::tagList(
 		h2("Benthic Macroinvertebrates"),
-		
+		p(strong("Target site, report:")),
+		div(class = "pill", textOutput("txt_rep_siteid_woesumm")),
+		br(),
+		use_bs_popover(),
 		if("BMI" %in% woe_comms()){
 			shiny::tagList(
 				#h3("Biological index distributions"),
-				
+				use_bs_popover(),
 				h3(tagList(
 					"Biological index distributions",
-					icon("info-circle", style = "color: #2fa4e7", id="bmiIndInfo",
-					))),
-				bsPopover(id="bmiIndInfo", title = HTML("<b>Helpful Hints</b>"), 
-							 content = HTML("Boxplots depicting the distribution of benthic macroinvertebrate index scores for sites in the same (inside the case) and in a different cluster (outside the case) as the target site. Points represent index values with colors and shapes depicting reference and degraded status (i.e., whether index values exceed user-specified thresholds)."),
-							 placement = "right", trigger = "hover"),
+					icon("info-circle", 
+						  style = "color: #2fa4e7", 
+						  id="bmiIndInfo") |>
+						bs_embed_popover(title = "Helpful Hints",
+											  content = "Boxplots depicting the distribution of benthic macroinvertebrate index scores for sites in the same (inside the case) and in a different cluster (outside the case) as the target site. Points represent index values with colors and shapes depicting reference and degraded status (i.e., whether index values exceed user-specified thresholds).",
+											  placement = "right",
+											  trigger = "hover"))),
+				# bsPopover(id="bmiIndInfo", 
+				# 			 title = HTML("<b>Helpful Hints</b>"), 
+				# 			 content = HTML("Boxplots depicting the distribution of benthic macroinvertebrate index scores for sites in the same (inside the case) and in a different cluster (outside the case) as the target site. Points represent index values with colors and shapes depicting reference and degraded status (i.e., whether index values exceed user-specified thresholds)."),
+				# 			 placement = "right", 
+				# 			 trigger = "hover"),
 				
 				imageOutput("img_bmi_index",
 								width = "100%",
@@ -2263,22 +2710,36 @@ output$woe_tab_ui <- renderUI({
 				
 				h3(tagList(
 					"Weight of evidence table",
-					icon("info-circle", style = "color: #2fa4e7", id="bmiWOEInfo",
-					))),
-				bsPopover(id="bmiWOEInfo", title = HTML("<b>Helpful Hints</b>"),
-							 content = HTML("Line of evidence scores assigned to each benthic macroinvertebrate sample for each evaluated stressor."),
-							 placement = "right", trigger = "hover"),
+					icon("info-circle", 
+						  style = "color: #2fa4e7", 
+						  id="bmiWOEInfo") |>
+						bs_embed_popover(title = "Helpful Hints",
+											  content = "Line of evidence scores assigned to each benthic macroinvertebrate sample for each evaluated stressor.",
+											  placement = "right",
+											  trigger = "hover"))),
+				# bsPopover(id="bmiWOEInfo", 
+				# 			 title = HTML("<b>Helpful Hints</b>"),
+				# 			 content = HTML("Line of evidence scores assigned to each benthic macroinvertebrate sample for each evaluated stressor."),
+				# 			 placement = "right", 
+				# 			 trigger = "hover"),
 				
 				DT::dataTableOutput("tbl_woe_bmi"),
 				
 				#h3("Lines of evidence summary"),
 				h3(tagList(
 					"Lines of evidence summary",
-					icon("info-circle", style = "color: #2fa4e7", id="bmiWOESummInfo",
-					))),
-				bsPopover(id="bmiWOESummInfo", title = HTML("<b>Helpful Hints</b>"),
-							 content = HTML("Summary of the number of lines evidence supporting, refuting, indeterminate, or not evaluated for each benthic macroinvertebrate sample and each evaluated stressor."),
-							 placement = "right", trigger = "hover"),
+					icon("info-circle", 
+						  style = "color: #2fa4e7", 
+						  id="bmiWOESummInfo") |>
+						bs_embed_popover(title = "Helpful Hints",
+											  content = "Summary of the number of lines evidence supporting, refuting, indeterminate, or not evaluated for each benthic macroinvertebrate sample and each evaluated stressor.",
+											  placement = "right",
+											  trigger = "hover"))),
+				# bsPopover(id="bmiWOESummInfo", 
+				# 			 title = HTML("<b>Helpful Hints</b>"),
+				# 			 content = HTML("Summary of the number of lines evidence supporting, refuting, indeterminate, or not evaluated for each benthic macroinvertebrate sample and each evaluated stressor."),
+				# 			 placement = "right", 
+				# 			 trigger = "hover"),
 				
 				DT::dataTableOutput("tbl_woe_summ_bmi"),
 				br(),
@@ -2297,14 +2758,21 @@ output$woe_tab_ui <- renderUI({
 		if("FISH" %in% woe_comms()){
 			shiny::tagList(
 				# h3("Biological index distributions"),
-				
+				use_bs_popover(),
 				h3(tagList(
 					"Biological index distributions",
-					icon("info-circle", style = "color: #2fa4e7", id="fishIndInfo",
-					))),
-				bsPopover(id="fishIndInfo", title = HTML("<b>Helpful Hints</b>"),
-							 content = HTML("Boxplots depicting the distribution of fish index scores for sites in the same (inside the case) and in a different cluster (outside the case) as the target site. Points represent index values with colors and shapes depicting reference and degraded status (i.e., whether index values exceed user-specified thresholds)."),
-							 placement = "right", trigger = "hover"),
+					icon("info-circle", 
+						  style = "color: #2fa4e7", 
+						  id="fishIndInfo") |>
+						bs_embed_popover(title = "Helpful Hints",
+											  content = "Boxplots depicting the distribution of fish index scores for sites in the same (inside the case) and in a different cluster (outside the case) as the target site. Points represent index values with colors and shapes depicting reference and degraded status (i.e., whether index values exceed user-specified thresholds).",
+											  placement = "right",
+											  trigger = "hover"))),
+				# bsPopover(id="fishIndInfo", 
+				# 			 title = HTML("<b>Helpful Hints</b>"),
+				# 			 content = HTML("Boxplots depicting the distribution of fish index scores for sites in the same (inside the case) and in a different cluster (outside the case) as the target site. Points represent index values with colors and shapes depicting reference and degraded status (i.e., whether index values exceed user-specified thresholds)."),
+				# 			 placement = "right", 
+				# 			 trigger = "hover"),
 				
 				imageOutput("img_fish_index",
 								width = "100%",
@@ -2313,22 +2781,36 @@ output$woe_tab_ui <- renderUI({
 				#h3("Weight of evidence table"),
 				h3(tagList(
 					"Weight of evidence table",
-					icon("info-circle", style = "color: #2fa4e7", id="fishWOEInfo",
-					))),
-				bsPopover(id="fishWOEInfo", title = HTML("<b>Helpful Hints</b>"),
-							 content = HTML("Line of evidence scores assigned to each fish sample for each evaluated stressor."),
-							 placement = "right", trigger = "hover"),
+					icon("info-circle", 
+						  style = "color: #2fa4e7", 
+						  id="fishWOEInfo") |>
+						  	bs_embed_popover(title = "Helpful Hints",
+						  						  content = "Line of evidence scores assigned to each fish sample for each evaluated stressor.",
+						  						  placement = "right",
+						  						  trigger = "hover"))),
+				# bsPopover(id="fishWOEInfo", 
+				# 			 title = HTML("<b>Helpful Hints</b>"),
+				# 			 content = HTML("Line of evidence scores assigned to each fish sample for each evaluated stressor."),
+				# 			 placement = "right", 
+				# 			 trigger = "hover"),
 				
 				DT::dataTableOutput("tbl_woe_fish"),
 				
 				#h3("Lines of evidence summary"),
 				h3(tagList(
 					"Lines of evidence summary",
-					icon("info-circle", style = "color: #2fa4e7", id="fishWOESummInfo",
-					))),
-				bsPopover(id="fishWOESummInfo", title = HTML("<b>Helpful Hints</b>"),
-							 content = HTML("Summary of the number of lines evidence supporting, refuting, indeterminate, or not evaluated for each fish sample and each evaluated stressor."),
-							 placement = "right", trigger = "hover"),
+					icon("info-circle", 
+						  style = "color: #2fa4e7", 
+						  id="fishWOESummInfo") |>
+						bs_embed_popover(title = "Helpful Hints",
+											  content = "Summary of the number of lines evidence supporting, refuting, indeterminate, or not evaluated for each fish sample and each evaluated stressor.",
+											  placement = "right",
+											  trigger = "hover"))),
+				# bsPopover(id="fishWOESummInfo", 
+				# 			 title = HTML("<b>Helpful Hints</b>"),
+				# 			 content = HTML("Summary of the number of lines evidence supporting, refuting, indeterminate, or not evaluated for each fish sample and each evaluated stressor."),
+				# 			 placement = "right", 
+				# 			 trigger = "hover"),
 				
 				DT::dataTableOutput("tbl_woe_summ_fish"),
 				br(),
@@ -2347,13 +2829,21 @@ output$woe_tab_ui <- renderUI({
 		if("ALG" %in% woe_comms()){
 			shiny::tagList(
 				#h3("Biological index distributions"),
+				use_bs_popover(),
 				h3(tagList(
 					"Biological index distributions",
-					icon("info-circle", style = "color: #2fa4e7", id="algIndInfo",
-					))),
-				bsPopover(id="algIndInfo", title = HTML("<b>Helpful Hints</b>"),
-							 content = HTML("Boxplots depicting the distribution of algae index scores for sites in the same (inside the case) and in a different cluster (outside the case) as the target site. Points represent index values with colors and shapes depicting reference and degraded status (i.e., whether index values exceed user-specified thresholds)."),
-							 placement = "right", trigger = "hover"),
+					icon("info-circle", 
+						  style = "color: #2fa4e7", 
+						  id="algIndInfo") |>
+						bs_embed_popover(title = "Helpful Hints",
+											  content = "Boxplots depicting the distribution of algae index scores for sites in the same (inside the case) and in a different cluster (outside the case) as the target site. Points represent index values with colors and shapes depicting reference and degraded status (i.e., whether index values exceed user-specified thresholds).",
+											  placement = "right",
+											  trigger = "hover"))),
+				# bsPopover(id="algIndInfo", 
+				# 			 title = HTML("<b>Helpful Hints</b>"),
+				# 			 content = HTML("Boxplots depicting the distribution of algae index scores for sites in the same (inside the case) and in a different cluster (outside the case) as the target site. Points represent index values with colors and shapes depicting reference and degraded status (i.e., whether index values exceed user-specified thresholds)."),
+				# 			 placement = "right", 
+				# 			 trigger = "hover"),
 				
 				imageOutput("img_alg_index",
 								width = "100%",
@@ -2362,22 +2852,36 @@ output$woe_tab_ui <- renderUI({
 				#h3("Weight of evidence table"),
 				h3(tagList(
 					"Weight of evidence table",
-					icon("info-circle", style = "color: #2fa4e7", id="algWOEInfo",
-					))),
-				bsPopover(id="algWOEInfo", title = HTML("<b>Helpful Hints</b>"),
-							 content = HTML("Line of evidence scores assigned to each algae sample for each evaluated stressor."),
-							 placement = "right", trigger = "hover"),
+					icon("info-circle", 
+						  style = "color: #2fa4e7", 
+						  id="algWOEInfo") |>
+						bs_embed_popover(title = "Helpful Hints",
+											  content = "Line of evidence scores assigned to each algae sample for each evaluated stressor.",
+											  placement = "right",
+											  trigger = "hover"))),
+				# bsPopover(id="algWOEInfo", 
+				# 			 title = HTML("<b>Helpful Hints</b>"),
+				# 			 content = HTML("Line of evidence scores assigned to each algae sample for each evaluated stressor."),
+				# 			 placement = "right", 
+				# 			 trigger = "hover"),
 				
 				DT::dataTableOutput("tbl_woe_alg"),
 				
 				#h3("Lines of evidence summary"),
 				h3(tagList(
 					"Lines of evidence summary",
-					icon("info-circle", style = "color: #2fa4e7", id="algWOESummInfo",
-					))),
-				bsPopover(id="algWOESummInfo", title = HTML("<b>Helpful Hints</b>"),
-							 content = HTML("Summary of the number of lines evidence supporting, refuting, indeterminate, or not evaluated for each algae sample and each evaluated stressor."),
-							 placement = "right", trigger = "hover"),
+					icon("info-circle", 
+						  style = "color: #2fa4e7", 
+						  id="algWOESummInfo") |>
+						bs_embed_popover(title = "Helpful Hints",
+											  content = "Summary of the number of lines evidence supporting, refuting, indeterminate, or not evaluated for each algae sample and each evaluated stressor.",
+											  placement = "right",
+											  trigger = "hover"))),
+				# bsPopover(id="algWOESummInfo", 
+				# 			 title = HTML("<b>Helpful Hints</b>"),
+				# 			 content = HTML("Summary of the number of lines evidence supporting, refuting, indeterminate, or not evaluated for each algae sample and each evaluated stressor."),
+				# 			 placement = "right", 
+				# 			 trigger = "hover"),
 				
 				DT::dataTableOutput("tbl_woe_summ_alg"),
 				br(),
@@ -2395,26 +2899,26 @@ output$woe_tab_ui <- renderUI({
 
 })
 
-# WOE SUMM ---- OLD
+# WOE SUMM ---- 
 
 sketch <- htmltools::withTags(table(
 	class = 'display',
 	thead(
 		tr(
-			th(rowspan = 3, 'Stressor'),
-			th(rowspan = 3, 'Response Sample ID'),
-			th(rowspan = 3, 'Response Sample Date'),
-			th(colspan = 7, 'Inside-the-Case'),
+			th(rowspan = 3, shiny::HTML("<span title='Stressors being evaluated'>Stressor</span>")),
+			th(rowspan = 3, shiny::HTML("<span title='Biological response sample identifier'>Response Sample ID</span>")),
+			th(rowspan = 3, shiny::HTML("<span title='Sampling date for biological response'>Response Sample Date</span>")),
+			th(colspan = 7, shiny::HTML("<span title='Weight of Evidence lines inside the case group'>Inside-the-Case</span>")),
 			th(rowspan = 3, ''),
-			th(rowspan = 1, 'Outside the Case')
+			th(rowspan = 1, shiny::HTML("<span title='Weight of Evidence outside the case group'>Outside the Case</span>"))
 		),
 		tr(
-			th(rowspan = 2, 'Co-Occurrence'),
-			th(rowspan = 2, 'Sufficiency'),
-			th(rowspan = 2, 'Biological Gradient'),
-			th(rowspan = 2, 'Time Sequence'),
-			th(colspan = 3, 'Verified Prediction'),
-			th(rowspan = 2, 'Biological Gradient')
+			th(rowspan = 2, shiny::HTML("<span title='Co-occurrence: coincidence of stressor elevation with biological response'>Co-Occurrence</span>")),
+			th(rowspan = 2, shiny::HTML("<span title='Sufficiency: degree to which the stressor is adequate to cause response'>Sufficiency</span>")),
+			th(rowspan = 2, shiny::HTML("<span title='Biological gradient within case group'>Biological Gradient</span>")),
+			th(rowspan = 2, shiny::HTML("<span title='Time sequence between stressor and biological response'>Time Sequence</span>")),
+			th(colspan = 3, shiny::HTML("<span title='Verified predictions across different scoring approaches'>Verified Prediction</span>")),
+			th(rowspan = 2, shiny::HTML("<span title='Biological gradient outside case group'>Biological Gradient'</span>"))
 		),
 		tr(
 			lapply(c('SSTolVals', 'SSI Co-Occurrence', 'SSI Sufficiency'), th)
@@ -2440,20 +2944,26 @@ sketch_summ <- htmltools::withTags(table(
  # BMI
 	## woe loe summary table ----
 	df_woe_summ_bmi <- reactive({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# check if data exists
 		fn_data <- file.path(dn_results, 
 									react_setup_region(),
-									sel_targsite(), 
+									stat_id, 
 									dn_bmi, 
 									dn_woe,
-									paste0(sel_targsite(), "_LoESummary.tab"))
+									paste0(stat_id, "_LoESummary.tab"))
 		if (file.exists(fn_data)) {
 			df <- read.table(fn_data, 
 								  header = TRUE, 
 								  sep = "\t", 
 								  stringsAsFactors = FALSE) |> 
-				dplyr::select(Stressor, RespSampleID, RespSampleDate, NumSupport,
-								  NumRefute, NumIndeterminate, NumNotEvaluated) |> 
+				dplyr::select(Stressor, 
+								  RespSampleID, 
+								  RespSampleDate, 
+								  NumSupport,
+								  NumRefute, 
+								  NumIndeterminate,
+								  NumNotEvaluated) |> 
 				dplyr::arrange(Stressor, RespSampleDate)
 		} else {
 			showNotification("WoE LoE Summary file not found.",
@@ -2507,22 +3017,26 @@ sketch_summ <- htmltools::withTags(table(
 	
 	## woe table ----
 	df_woe_bmi <- reactive({
-		
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# check if data exists
 		# dn_site <- basename(list.dirs(file.path(dn_results), 
 		# 										recursive = FALSE))
 		fn_data <- file.path(dn_results,
 									react_setup_region(),
-									sel_targsite(),
+									stat_id,
 									dn_bmi, 
 									dn_woe,
-									paste0(sel_targsite(), "_LoEs.tab"))
+									paste0(stat_id, "_LoEs.tab"))
 		if (file.exists(fn_data)) {
 			df <- read.table(fn_data, 
 								  header = TRUE, 
 								  sep = "\t", 
 								  stringsAsFactors = FALSE) |> 
-				dplyr::select(-StationID, -StressSampleID, -StressSampleDate, -bioComm, -StressorValue)
+				dplyr::select(-StationID, 
+								  -StressSampleID, 
+								  -StressSampleDate, 
+								  -bioComm, 
+								  -StressorValue)
 			
 			
 			if(!"VP_SSTV" %in% names(df)){ 
@@ -2591,13 +3105,14 @@ sketch_summ <- htmltools::withTags(table(
 	
 	## woe fig, bio index----
 	output$img_bmi_index <- renderImage({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# return path
 		list(
 			src = file.path(dn_results,
 								 react_setup_region(),
-								 sel_targsite(), 
+								 stat_id, 
 								 "SiteInfo", 
-								 paste0(sel_targsite(),
+								 paste0(stat_id,
 								 		 "_BMI_IndexBoxplotsByCase.png")
 								 ),
 			contentType = "image/png",
@@ -2609,14 +3124,15 @@ sketch_summ <- htmltools::withTags(table(
 	
 	## woe fig, loe----
 	output$img_loe_summ_bmi <- renderImage({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# return path
 		list(
 			src = file.path(dn_results, 
 								 react_setup_region(),
-								 sel_targsite(),
+								 stat_id,
 								 "BMI",
 								 "_WoE",
-								 paste0(sel_targsite(),
+								 paste0(stat_id,
 								 		 "_BMI_LoESummaryFig.png")),
 			contentType = "image/png",
 			alt = "Lines of Evidence Summary",
@@ -2630,21 +3146,27 @@ sketch_summ <- htmltools::withTags(table(
 	# FISH
 	## woe loe summary table ----
 	df_woe_summ_fish <- reactive({
+		stat_id <- react_report_targetsiteid() # sel_targsiteid()
 		# check if data exists
 		# browser()
 		fn_data <- file.path(dn_results, 
 									react_setup_region(),
-									sel_targsite(), 
+									stat_id, 
 									dn_fish, 
 									dn_woe,
-									paste0(sel_targsite(), "_LoESummary.tab"))
+									paste0(stat_id, "_LoESummary.tab"))
 		if (file.exists(fn_data)) {
 			df <- read.table(fn_data, 
 								  header = TRUE, 
 								  sep = "\t", 
 								  stringsAsFactors = FALSE)|> 
-				dplyr::select(Stressor, RespSampleID, RespSampleDate, NumSupport,
-								  NumRefute, NumIndeterminate, NumNotEvaluated) |> 
+				dplyr::select(Stressor, 
+								  RespSampleID, 
+								  RespSampleDate,
+								  NumSupport,
+								  NumRefute,
+								  NumIndeterminate, 
+								  NumNotEvaluated) |> 
 				dplyr::arrange(Stressor, RespSampleDate)
 		} else {
 			showNotification("WoE LoE Summary file not found.",
@@ -2697,21 +3219,26 @@ sketch_summ <- htmltools::withTags(table(
 	
 	## woe table ----
 	df_woe_fish <- reactive({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# check if data exists
 		# dn_site <- basename(list.dirs(file.path(dn_results), 
 		# 										recursive = FALSE))
 		fn_data <- file.path(dn_results,
 									react_setup_region(),
-									sel_targsite(),
+									stat_id,
 									dn_fish, 
 									dn_woe,
-									paste0(sel_targsite(), "_LoEs.tab"))
+									paste0(stat_id, "_LoEs.tab"))
 		if (file.exists(fn_data)) {
 			df <- read.table(fn_data, 
 								  header = TRUE, 
 								  sep = "\t", 
 								  stringsAsFactors = FALSE)|> 
-				dplyr::select(-StationID, -StressSampleID, -StressSampleDate, -bioComm, -StressorValue)
+				dplyr::select(-StationID, 
+								  -StressSampleID, 
+								  -StressSampleDate,
+								  -bioComm,
+								  -StressorValue)
 			
 			
 			if(!"VP_SSTV" %in% names(df)){ 
@@ -2780,13 +3307,14 @@ sketch_summ <- htmltools::withTags(table(
 	
 	## woe fig, bio index----
 	output$img_fish_index <- renderImage({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# return path
 		list(
 			src = file.path(dn_results,
 								 react_setup_region(),
-								 sel_targsite(), 
+								 stat_id, 
 								 "SiteInfo", 
-								 paste0(sel_targsite(),
+								 paste0(stat_id,
 								 		 "_FISH_IndexBoxplotsByCase.png")
 			),
 			contentType = "image/png",
@@ -2798,14 +3326,15 @@ sketch_summ <- htmltools::withTags(table(
 	
 	## woe fig, loe----
 	output$img_loe_summ_fish <- renderImage({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# return path
 		list(
 			src = file.path(dn_results, 
 								 react_setup_region(),
-								 sel_targsite(),
+								 stat_id,
 								 "FISH",
 								 "_WoE",
-								 paste0(sel_targsite(),
+								 paste0(stat_id,
 								 		 "_FISH_LoESummaryFig.png")),
 			contentType = "image/png",
 			alt = "Lines of Evidence Summary",
@@ -2819,21 +3348,27 @@ sketch_summ <- htmltools::withTags(table(
 	# ALG
 	## woe loe summary table ----
 	df_woe_summ_alg <- reactive({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# check if data exists
 		# browser()
 		fn_data <- file.path(dn_results, 
 									react_setup_region(),
-									sel_targsite(), 
+									stat_id, 
 									dn_alg, 
 									dn_woe,
-									paste0(sel_targsite(), "_LoESummary.tab"))
+									paste0(stat_id, "_LoESummary.tab"))
 		if (file.exists(fn_data)) {
 			df <- read.table(fn_data, 
 								  header = TRUE, 
 								  sep = "\t", 
 								  stringsAsFactors = FALSE)|> 
-				dplyr::select(Stressor, RespSampleID, RespSampleDate, NumSupport,
-								  NumRefute, NumIndeterminate, NumNotEvaluated) |> 
+				dplyr::select(Stressor,
+								  RespSampleID, 
+								  RespSampleDate, 
+								  NumSupport,
+								  NumRefute,
+								  NumIndeterminate, 
+								  NumNotEvaluated) |> 
 				dplyr::arrange(Stressor, RespSampleDate)
 		} else {
 			showNotification("WoE LoE Summary file not found.",
@@ -2886,21 +3421,26 @@ sketch_summ <- htmltools::withTags(table(
 	
 	## woe table ----
 	df_woe_alg <- reactive({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# check if data exists
 		# dn_site <- basename(list.dirs(file.path(dn_results), 
 		# 										recursive = FALSE))
 		fn_data <- file.path(dn_results,
 									react_setup_region(),
-									sel_targsite(),
+									stat_id,
 									dn_alg, 
 									dn_woe,
-									paste0(sel_targsite(), "_LoEs.tab"))
+									paste0(stat_id, "_LoEs.tab"))
 		if (file.exists(fn_data)) {
 			df <- read.table(fn_data, 
 								  header = TRUE, 
 								  sep = "\t", 
 								  stringsAsFactors = FALSE)|> 
-				dplyr::select(-StationID, -StressSampleID, -StressSampleDate, -bioComm, -StressorValue)
+				dplyr::select(-StationID,
+								  -StressSampleID,
+								  -StressSampleDate,
+								  -bioComm, 
+								  -StressorValue)
 			
 			
 			if(!"VP_SSTV" %in% names(df)){ 
@@ -2968,13 +3508,14 @@ sketch_summ <- htmltools::withTags(table(
 	
 	## woe fig, bio index----
 	output$img_alg_index <- renderImage({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# return path
 		list(
 			src = file.path(dn_results,
 								 react_setup_region(),
-								 sel_targsite(), 
+								 stat_id, 
 								 "SiteInfo", 
-								 paste0(sel_targsite(),
+								 paste0(stat_id,
 								 		 "_ALG_IndexBoxplotsByCase.png")
 			),
 			contentType = "image/png",
@@ -2986,14 +3527,15 @@ sketch_summ <- htmltools::withTags(table(
 	
 	## woe fig, loe----
 	output$img_loe_summ_alg <- renderImage({
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		# return path
 		list(
 			src = file.path(dn_results, 
 								 react_setup_region(),
-								 sel_targsite(),
+								 stat_id,
 								 "ALG",
 								 "_WoE",
-								 paste0(sel_targsite(),
+								 paste0(stat_id,
 								 		 "_ALG_LoESummaryFig.png")),
 			contentType = "image/png",
 			alt = "Lines of Evidence Summary",
@@ -3011,7 +3553,7 @@ sketch_summ <- htmltools::withTags(table(
 	ss_html_content <- reactiveFileReader(
 		intervalMillis = 1000/2,  # check every 1 second (1000 ms) (adjust as needed)
 		session = session,
-		filePath = file.path("www", "RMD_HTML", "ShinyHTML_StressSumm.html"),
+		filePath = file.path(dn_rmd_html, "ShinyHTML_StressSumm.html"),
 		readFunc = function(path) {
 			paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 		}
@@ -3039,7 +3581,7 @@ sketch_summ <- htmltools::withTags(table(
 		# trigger created when save table
 		req(react_report_run())
 		
-		stat_id <- sel_targsite()
+		stat_id <- react_report_targetsiteid() # sel_targsite()
 		fn_gaps <- paste0(stat_id, "_datagaps.tab")
 		
 		path_table <- file.path(dn_results, 
