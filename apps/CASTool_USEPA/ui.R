@@ -8,10 +8,12 @@
 #
 
 # Define UI for application
-navbarPage("CASTool",
+#shinymanager::secure_app(
+	navbarPage("CASTool",
 			  id = "navbar",
 			  useShinyjs(),     # activate Shinyjs commands
 			  use_bs_tooltip(), # activate bsplus tooltips
+			  bsplus::use_bs_popover(),
 			  # theme = shinytheme("spacelab"),
 			  tab_code_about(),
 			  tab_code_checkfiles(),
@@ -22,4 +24,5 @@ navbarPage("CASTool",
 			  tab_code_woesumm(),
 			  tab_code_stresssumm(),
 			  tab_code_gaps()
-)## navbarPage ~ END
+	)## navbarPage ~ END
+#)

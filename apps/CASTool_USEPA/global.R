@@ -22,6 +22,7 @@ library(CASToolWSStressorPckg)
 library(sf)
 library(CASToolBaseDataPckg)
 library(kableExtra)
+library(shinymanager)
 
 # library(zip)	  # use `utils` as `zip` pkg doesn't work on ShinyApps.io
 
@@ -198,3 +199,10 @@ file.copy(from = fn_from, to = fn_to, overwrite = TRUE)
 # WSStressors ----
 # fn_wsstressors <- file.path("www", "CASTool_WSStressors.csv")
 # df_wsstressors <- read.csv(fn_wsstressors)
+
+# Credentials
+# credentials <- data.frame(
+# 	user = "guest",
+# 	password = "CASTool2026!",
+# 	stringsAsFactors = FALSE
+# )

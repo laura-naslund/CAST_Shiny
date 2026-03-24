@@ -10,8 +10,10 @@
 # Define server logic required to draw a histogram
 function(input, output, session) {
 
-	# Sections headers by tab
-
+		# res_auth <- shinymanager::secure_server(
+		# 	check_credentials = shinymanager::check_credentials(credentials)
+		# )
+	
 ## ABOUT ----
 	
 # CHECK ----
@@ -565,7 +567,7 @@ function(input, output, session) {
 			# df_targets <- data.frame(TargetSiteID = input$si_checked_sites_targ)
 			path_meta <- file.path(in.dir, fn_default_check_input_cast_metadata)
 			df_meta <- readxl::read_excel(path_meta,
-													sheet = "Sheet1",
+													sheet = "Sheet1", # LCN should change this to position so e.g., Sheet 1 doesn't cause fail
 													skip = 0)
 			fn_targets <- df_meta |>
 				dplyr::filter(Variable == "fn.targets") |>

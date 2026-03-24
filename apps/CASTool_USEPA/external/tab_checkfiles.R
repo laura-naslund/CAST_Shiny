@@ -104,10 +104,12 @@ function() {
 							column(6,
 									 p(tagList(
 									 	strong("Exclude outliers: "),
-									 	icon("info-circle", style = "color: #2fa4e7", id="outlierInfo",
-									 	))),
-									 bsPopover(id="outlierInfo", title = HTML("<b>Helpful Hints</b>"), content = HTML("To modify, change the removeOutliers parameter in _CASTool_Metadata.xlsx."),
-									 			 placement = "right", trigger = "hover"),
+									 	icon("info-circle", style = "color: #2fa4e7", id="outlierInfo") |> 
+									 		bsplus::bs_embed_popover(
+									 			title = "Helpful Hints", 
+									 			content = "To modify, change the removeOutliers parameter in _CASTool_Metadata.xlsx.",
+									 			placement = "right", 
+									 			trigger = "hover"))),
 								 div(class = "pill", textOutput("txt_check_outliers"))
 								 )
 								 # radioButtons("rad_check_outliers",
