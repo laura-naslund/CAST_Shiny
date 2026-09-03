@@ -2277,7 +2277,7 @@ function(input, output, session) {
 			
 			# have data_stressorinfoWS in env so use it
 			#if (exists("data_stressorinfoWS")) {
-			if(list.WSStress$data_stressorinfoWS == FALSE){
+			if(is.null(list.WSStress$data_stressorinfoWS) == FALSE){
 				
 				df_plots_data_stressorinfoWS <- list.WSStress$data_stressorinfoWS %>%
 					# keep columns need
