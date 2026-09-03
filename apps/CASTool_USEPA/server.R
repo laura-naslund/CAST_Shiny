@@ -483,7 +483,7 @@ function(input, output, session) {
 					temp_names <- names(read.csv(temp_fp, nrows = 1, header = TRUE))
 				}
 				if(tools::file_ext(temp_fp) == "xlsx"){
-					temp_names <- names(readxl::read_excel(temp_fp, nrows = 1, header = TRUE))
+					temp_names <- names(readxl::read_excel(temp_fp, n_max = 1, col_names = TRUE))
 				}
 				if(length(setdiff(temp_names, "TaxonID")) == 0 ){
 					sstv_bool_vec[i] <- FALSE

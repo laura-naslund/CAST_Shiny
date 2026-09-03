@@ -130,8 +130,8 @@ for (i in seq_len(length(bc_dir))) {
 	## directory names only
 	png_dirs <- basename(dirname(png_files))
 	## convert to labels
-	png_dirs_labs <- data_stressInfo[
-		match(png_dirs, data_stressInfo$StdParamName),
+	png_dirs_labs <-  list.Stress$data_stressInfo[
+		match(png_dirs, list.Stress$data_stressInfo$StdParamName),
 		"Label",
 		TRUE] # convert to vector from tibble
 	## clean up (same as CASTfxn BMI.rmd)

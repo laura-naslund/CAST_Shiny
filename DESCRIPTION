@@ -38,7 +38,6 @@ Imports:
   leaflet,
   lubridate,
   purrr,
-  rgdal,
   rsconnect,
   shinyFiles,
   sp,
