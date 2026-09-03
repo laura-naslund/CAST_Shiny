@@ -817,8 +817,8 @@ function(input, output, session) {
 			incProgress(1/prog_n, detail = prog_detail)
 			Sys.sleep(prog_sleep)
 		
-			list.Tables <- checkInputs(dir.uploaded = in.dir,
-												dir.out = out.dir,
+			list.Tables <- checkInputs(dir_uploaded = in.dir,
+												dir_out = out.dir,
 												fn.inputcheck = fn.inputcheck)
 			# 20251216, no longer have df_targets as input
 												# df_targets = df_targets)
@@ -2276,9 +2276,10 @@ function(input, output, session) {
 			
 			
 			# have data_stressorinfoWS in env so use it
-			if (exists("data_stressorinfoWS")) {
+			#if (exists("data_stressorinfoWS")) {
+			if(list.WSStress$data_stressorinfoWS == FALSE){
 				
-				df_plots_data_stressorinfoWS <- data_stressorinfoWS %>%
+				df_plots_data_stressorinfoWS <- list.WSStress$data_stressorinfoWS %>%
 					# keep columns need
 					dplyr::select(StreamCatVar, Label) %>%
 					# remove duplicates
