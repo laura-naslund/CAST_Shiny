@@ -41,7 +41,6 @@ boo_print_nodata <- TRUE
 
 # loop through each biocomm
 
-
 for (i in seq_len(length(bc_dir))) {
 	img_dir <- file.path(dn_results,
 								react_setup_region(),
@@ -130,10 +129,23 @@ for (i in seq_len(length(bc_dir))) {
 	## directory names only
 	png_dirs <- basename(dirname(png_files))
 	## convert to labels
-	png_dirs_labs <-  list.Stress$data_stressInfo[
-		match(png_dirs, list.Stress$data_stressInfo$StdParamName),
+	# png_dirs_labs <-  list.Stress$data_stressInfo[
+	# 	match(png_dirs, list.Stress$data_stressInfo$StdParamName),
+	# 	"Label",
+	# 	TRUE] # convert to vector from tibble
+	
+	fp_initialStress <- file.path(dn_results,
+								react_setup_region(),
+								sel_targsite(),
+								paste0(sel_targsite(), "_InitialStressors.csv"))
+	
+	initial_stress <- read.csv(fp_initialStress)
+	
+	png_dirs_labs <-  initial_stress[
+		match(png_dirs, initial_stress$Stressor),
 		"Label",
 		TRUE] # convert to vector from tibble
+		
 	## clean up (same as CASTfxn BMI.rmd)
 	png_dirs_labs <- sub("(mg/l)", 
 								"mg/L", 

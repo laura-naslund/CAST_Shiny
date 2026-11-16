@@ -9,6 +9,17 @@
 
 # Define server logic required to draw a histogram
 function(input, output, session) {
+	
+	
+	# call the server part
+	# check_credentials returns a function to authenticate users
+	res_auth <- secure_server(
+		check_credentials = check_credentials(credentials)
+	)
+	
+	output$auth_output <- renderPrint({
+		reactiveValuesToList(res_auth)
+	})
 
 # Sections headers by tab
 	
@@ -27,6 +38,7 @@ function(input, output, session) {
 	dn_data     <- file.path(base_session_dir, "Data")
 	dn_results  <- file.path(base_session_dir, "Results")
 	dn_rmd_html <- file.path(base_session_dir, "RMD_HTML")
+	
 	
 	# Create the dirs once per session
 	dir.create(dn_data,     recursive = TRUE, showWarnings = FALSE)
@@ -457,8 +469,8 @@ function(input, output, session) {
 		user_files_alg <- "fn.alg.metrics" %in% df_user_files_present_fn
 		user_files_bmi <- "fn.bmi.metrics" %in% df_user_files_present_fn
 		user_files_fish <- "fn.fish.metrics" %in% df_user_files_present_fn
-		user_files_meas <- "fn.meas.info" %in% df_user_files_present_fn
-		user_files_model <- "fn.model.info" %in% df_user_files_present_fn
+		user_files_meas <- "fn.timestamped.info" %in% df_user_files_present_fn
+		user_files_model <- "fn.undated.info" %in% df_user_files_present_fn
 		user_files_alg_sstv <- "fn.alg.MT" %in% df_user_files_present_fn
 		user_files_bmi_sstv <- "fn.bmi.MT" %in% df_user_files_present_fn
 		user_files_fish_sstv <- "fn.fish.MT" %in% df_user_files_present_fn
@@ -1545,7 +1557,7 @@ function(input, output, session) {
 				
 				# stressors
 				df_time_est_chemInfo <- readRDS(
-					file.path(path_check_sk, "data_chemInfo.rds"))
+					file.path(path_check_sk, "data_tsInfo.rds"))
 				time_est_stressor_num <- sum(df_time_est_chemInfo$UseInStressorID, 
 													  na.rm = TRUE)
 				react_report_time_est$num_stressors <- time_est_stressor_num
@@ -2054,18 +2066,15 @@ function(input, output, session) {
 		tic_report <- Sys.time()
 		# code (wrap with progress pop up)
 		shiny::withProgress({
-			
-			 # browser()
-			# 	cat("debug here")
-			# 	
-			# # debugging
-			# source("C:/Users/Erik.Leppo/Documents/GitHub/CASTfxn/inst/shiny-examples/CASTool/CASTool.r",
-			# 		 local = TRUE)
-			# 	
-			# 	
-			
 			# Skeleton Code
-			source(path_skelcode, local = TRUE)
+			#source(path_skelcode, local = TRUE)
+
+			CASTfxn::runCASTfxn(boo_shiny = TRUE, 
+									  boo_debug = FALSE, 
+									  in_dir = dn_data, 
+									  out_dir = dn_results, 
+									  dn_checked_sk = dn_checked_sk,
+									  shiny_targ = input$si_checked_sites_targ)
 		}, message = "Skeleton Code"
 		)## withProgress
 		# report time in skeleton code,
@@ -2217,6 +2226,7 @@ function(input, output, session) {
 			# copy RMD so works in Shiny
 			## same issue for stress summ as getReport in skeleton code
 			## render switches working directory to location of RMD
+			#browser()
 			rmd2copy <- list.files(file.path("external",
 														"RMD"),
 										  pattern = "display_images_StressSumm\\.Rmd$",
@@ -2277,15 +2287,29 @@ function(input, output, session) {
 			
 			# have data_stressorinfoWS in env so use it
 			#if (exists("data_stressorinfoWS")) {
-			if(is.null(list.WSStress$data_stressorinfoWS) == FALSE){
+			#if(is.null(list.WSStress$data_stressorinfoWS) == FALSE){
+			#browser()
+			fp_wsstresshi <- file.path(dn_results,
+												react_setup_region(),
+												sel_targsite(),
+												"SiteInfo",
+												paste0(sel_targsite(), "WSStressHigh.csv"))
+			
+			if(file.exists(fp_wsstresshi) == TRUE){
 				
-				df_plots_data_stressorinfoWS <- list.WSStress$data_stressorinfoWS %>%
-					# keep columns need
-					dplyr::select(StreamCatVar, Label) %>%
-					# remove duplicates
-					unique() %>%
-					# note if have plot
+				# df_plots_data_stressorinfoWS <- list.WSStress$data_stressorinfoWS %>%
+				# 	# keep columns need
+				# 	dplyr::select(StreamCatVar, Label) %>%
+				# 	# remove duplicates
+				# 	unique() %>%
+				# 	# note if have plot
+				# 	dplyr::mutate(plot_present = StreamCatVar %in% fn_zip_ws_var)
+				
+				df_plots_data_stressorinfoWS <- CASToolHelperPckg::getWSStressorInfo() |> 
+					dplyr::select(StreamCatVar, Label) |> 
+					unique() |> 
 					dplyr::mutate(plot_present = StreamCatVar %in% fn_zip_ws_var)
+					
 				
 				react_wshed_var(df_plots_data_stressorinfoWS)
 				
@@ -2712,7 +2736,7 @@ function(input, output, session) {
 		path_chem_names <- file.path(dn_results, 
 											  react_setup_region(),
 											  "_CheckedInputs",
-											  "data_chemInfo.rds")
+											  "data_tsInfo.rds")
 		
 		if(file.exists(path_chem_names)){
 			chem_names <- readRDS(path_chem_names) |> 
@@ -2725,7 +2749,7 @@ function(input, output, session) {
 		path_model_names <- file.path(dn_results, 
 												react_setup_region(),
 												"_CheckedInputs",
-												"data_modelInfo.rds")
+												"data_undInfo.rds")
 		
 		if(file.exists(path_model_names)){
 			model_names <- readRDS(path_model_names) |> 
@@ -3573,13 +3597,13 @@ sketch_summ <- htmltools::withTags(table(
 					RespSampleDate,
 					CO,
 					Suff,
-					`Gradient..inside.`,
+					SRLin_Score_inside,
 					TS,
 					VP_SSTV,
 					VP_SSIbox,
 					VP_SSIlog,
 					#Blank1,
-					`Gradient..outside.`
+					SRLin_Score_outside
 				)
 			
 		} else {

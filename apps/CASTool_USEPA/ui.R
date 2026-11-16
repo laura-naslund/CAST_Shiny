@@ -8,7 +8,7 @@
 #
 
 # Define UI for application
-navbarPage("CASTool",
+ui <- shinymanager::secure_app(navbarPage("CASTool",
 			  id = "navbar",
 			  useShinyjs(),     # activate Shinyjs commands
 			  use_bs_tooltip(), # activate bsplus tooltips
@@ -23,3 +23,4 @@ navbarPage("CASTool",
 			  tab_code_wshedstress(),
 			  tab_code_gaps(),
 )## navbarPage ~ END
+)

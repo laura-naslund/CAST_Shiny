@@ -18,10 +18,7 @@ library(bsplus)  # tooltips
 # CASTool pkgs
 library(CASTfxn)
 library(CASToolHelperPckg)
-#library(CASToolClusterPckg) 
-#library(CASToolWSStressorPckg)
 library(sf)
-#library(CASToolBaseDataPckg)
 library(kableExtra)
 library(shinycssloaders) # withSpinner
 library(sfarrow)
@@ -35,6 +32,7 @@ library(maps)
 library(readxl)
 library(rmarkdown)
 library(shinyalert)
+library(shinymanager)
 library(data.table)
 library(devtools)
 library(pak)
@@ -70,14 +68,20 @@ library(zip)
 # library(shinythemes)
 # library(shinyalert)  # alerts
 
+credentials <- data.frame(
+	user = c("Plecoptera"), # mandatory
+	password = c("Peltoperlidae"), # mandatory
+	stringsAsFactors = FALSE
+)
+
+
+
 # Source ----
 ## Skeleton Code
 boo_Shiny <- TRUE
 # boo.debug <- TRUE
 # debug.person <- "Erik"
 path_skelcode <- file.path(system.file(package = "CASTfxn"),
-									"shiny-examples", 
-									"CASTool",
 									"CASTool.r")
 
 
@@ -201,7 +205,7 @@ url_ws_stress_info <- file.path(url_ws_stress_base,
 
 # Choices, Check Boxes ----
 choices_chk_check_comm <- c("Algae", "Macroinvertebrates", "Fish")
-choices_chk_check_stress <- c("Measured", "Modeled")
+choices_chk_check_stress <- c("Timestamped", "Undated")
 choices_chk_check_tol <- c("Algae", "Macroinvertebrates", "Fish")
 
 # InfoBox Text ----
@@ -223,7 +227,8 @@ int_report <- 0
 
 # GitHub Files ----
 url_github_castfxn <- "https://raw.githubusercontent.com/leppott/CASTfxn/main/inst/extdata"
-url_github_castshiny <- "https://raw.githubusercontent.com/leppott/CAST_Shiny/main/apps/CASTool_USEPA/www"
+#url_github_castshiny <- "https://raw.githubusercontent.com/leppott/CAST_Shiny/main/apps/CASTool_USEPA/www"
+url_github_castshiny <- "https://raw.githubusercontent.com/laura-naslund/CAST_Shiny/main/apps/CASTool_USEPA/www"
 
 # WWW----
 # dn_fc <- file.path("www", "RMD_HTML")
